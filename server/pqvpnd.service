@@ -1,0 +1,35 @@
+[Unit]
+Description=PQVPN Server Daemon
+Documentation=https://github.com/pqvpn/server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/pqvpnd \
+    --listen :8443 \
+    --cert /etc/pqvpn/server.crt \
+    --key /etc/pqvpn/server.key \
+    --wg-pubkey-file /etc/wireguard/server.pub \
+    --endpoint YOUR_IP:51820 \
+    --wg-interface wg0 \
+    --db /var/lib/pqvpn/peers.db
+WorkingDirectory=/var/lib/pqvpn
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+NoNewPrivileges=no
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/pqvpn
+PrivateTmp=yes
+
+# Capabilities needed for wg command
+AmbientCapabilities=CAP_NET_ADMIN
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,42 @@
+# Node
+node_modules/
+dist/
+build/
+.npm/
+
+# Rust
+target/
+
+# Binaries & Build Output
+*.exe
+pqvpnd-linux
+*.dll
+*.so
+*.dylib
+
+# Tauri
+client/src-tauri/target/
+client/src-tauri/gen/
+client/src-tauri/WixTools/
+
+# Environment / Secrets
+.env
+.env.local
+certs/
+*.key
+*.pem
+*.crt
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.sln
