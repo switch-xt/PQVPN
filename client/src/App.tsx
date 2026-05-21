@@ -791,7 +791,7 @@ function App() {
                     <text x="180" y="44" textAnchor="middle" className="relay-svg__sub" fill="var(--text-3)">Edge</text>
 
                     <text x="310" y="138" textAnchor="middle" className="relay-svg__label" fill="var(--text-1)">Exit</text>
-                    <text x="310" y="152" textAnchor="middle" className="relay-svg__sub" fill="var(--text-3)">🇺🇸 Iowa</text>
+                    <text x="310" y="152" textAnchor="middle" className="relay-svg__sub" fill="var(--text-3)">Peer Node</text>
                   </svg>
                 </div>
               </section>

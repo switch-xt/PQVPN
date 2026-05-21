@@ -117,7 +117,7 @@ pub async fn connect(
             server_pubkey: final_pubkey.clone(),
             preshared_key: psk_b64,
             endpoint: final_endpoint.clone(), // Connect directly to server
-            allowed_ips: "0.0.0.0/0, ::/0".into(),
+            allowed_ips: if mode == "share" { "10.8.0.0/24".into() } else { "0.0.0.0/0, ::/0".into() },
             gaming_mode: mode == "gaming",
             is_sharer: mode == "share",
         };
