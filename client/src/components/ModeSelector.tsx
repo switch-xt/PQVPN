@@ -5,6 +5,7 @@ type Mode = 'server' | 'peer' | 'gaming' | 'share';
 interface ModeSelectorProps {
   activeMode: Mode;
   onModeChange: (mode: Mode) => void;
+  disabled?: boolean;
 }
 
 const modes: { id: Mode; label: string; disabled: boolean }[] = [
@@ -14,22 +15,25 @@ const modes: { id: Mode; label: string; disabled: boolean }[] = [
   { id: 'gaming', label: 'Gaming', disabled: false },
 ];
 
-const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onModeChange }) => {
+const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onModeChange, disabled }) => {
   return (
     <div className="mode-selector" id="mode-selector">
-      {modes.map((mode) => (
-        <button
-          key={mode.id}
-          id={`mode-tab-${mode.id}`}
-          className={`mode-selector__tab ${
-            activeMode === mode.id ? 'mode-selector__tab--active' : ''
-          } ${mode.disabled ? 'mode-selector__tab--disabled' : ''}`}
-          onClick={() => !mode.disabled && onModeChange(mode.id)}
-          disabled={mode.disabled}
-        >
-          {mode.label}
-        </button>
-      ))}
+      {modes.map((mode) => {
+        const isTabDisabled = disabled || mode.disabled;
+        return (
+          <button
+            key={mode.id}
+            id={`mode-tab-${mode.id}`}
+            className={`mode-selector__tab ${
+              activeMode === mode.id ? 'mode-selector__tab--active' : ''
+            } ${isTabDisabled ? 'mode-selector__tab--disabled' : ''}`}
+            onClick={() => !isTabDisabled && onModeChange(mode.id)}
+            disabled={isTabDisabled}
+          >
+            {mode.label}
+          </button>
+        );
+      })}
     </div>
   );
 };

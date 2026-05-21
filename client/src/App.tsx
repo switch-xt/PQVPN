@@ -420,7 +420,7 @@ function App() {
             <span className="header__title">PQVPN</span>
             <span className="header__subtitle">Quantum Shield</span>
           </div>
-          <ModeSelector activeMode={mode} onModeChange={setMode} />
+          <ModeSelector activeMode={mode} onModeChange={setMode} disabled={connectionState !== 'disconnected'} />
         </header>
 
         {/* ── Scroll Area ────────────────────────── */}

@@ -86,7 +86,11 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 
 	// Configure the WireGuard peer with the derived PSK.
 	pskB64 := psk.EncodeBase64(result.PSK[:])
-	if err := h.wgMgr.SetPeer(hello.WGPubkey, pskB64, allocatedIP+"/32"); err != nil {
+	allowedIPs := fmt.Sprintf("%s/32", allocatedIP)
+	if hello.ShareCode != "" {
+		allowedIPs += ", 0.0.0.0/0"
+	}
+	if err := h.wgMgr.SetPeer(hello.WGPubkey, pskB64, allowedIPs); err != nil {
 		log.Printf("Failed to set WireGuard peer %s: %v", hello.WGPubkey, err)
 		writeError(w, http.StatusInternalServerError, "failed to configure WireGuard peer")
 		return
