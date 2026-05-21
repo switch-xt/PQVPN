@@ -30,6 +30,8 @@ pub struct ConnectionState {
     pub connected_at: Option<Instant>,
     /// The server IP/endpoint we're connected to.
     pub server_ip: String,
+    /// The connection mode: "server", "peer", or "gaming".
+    pub mode: String,
     /// Age of the current PSK in seconds.
     pub psk_established_at: Option<Instant>,
 }
@@ -41,6 +43,7 @@ impl Default for ConnectionState {
             pqc_active: false,
             connected_at: None,
             server_ip: String::new(),
+            mode: String::new(),
             psk_established_at: None,
         }
     }
@@ -60,12 +63,14 @@ pub struct VpnStatus {
 
 /// Connect to the VPN: try PQ negotiation first, fall back to direct WireGuard tunnel.
 #[tauri::command]
-pub async fn connect(app: tauri::AppHandle, server_host: String, server_port: u16, state: tauri::State<'_, AppState>) -> Result<String, String> {
+pub async fn connect(app: tauri::AppHandle, server_host: String, server_port: u16, mode: String, state: tauri::State<'_, AppState>) -> Result<String, String> {
     let mut config = state
         .config
         .lock()
         .map_err(|e| format!("lock error: {e}"))?
         .clone();
+
+    eprintln!("[PQVPN] Connecting in mode: {}", mode);
 
     // Server WireGuard public key (from the GCP server wg0 interface)
     let server_wg_pubkey = "ivYdRxcZR7MDBZFzlgnUKkFPwBQ1WVugJtcGmNpKhk8=".to_string();
@@ -78,6 +83,7 @@ pub async fn connect(app: tauri::AppHandle, server_host: String, server_port: u1
         &config.pinned_cert_der,
         &config.wg_pubkey(),
         "auth-token-placeholder",
+        &mode,
     ) {
         Ok(negotiated) => {
             let psk = crate::wireguard::psk_to_base64(&negotiated.psk);
@@ -102,6 +108,7 @@ pub async fn connect(app: tauri::AppHandle, server_host: String, server_port: u1
             preshared_key: psk_b64,
             endpoint: final_endpoint.clone(), // Connect directly to server
             allowed_ips: "0.0.0.0/0, ::/0".into(),
+            gaming_mode: mode == "gaming",
         };
 
         let conf_path = wireguard::write_conf(TUNNEL_NAME, &params)
@@ -125,6 +132,7 @@ pub async fn connect(app: tauri::AppHandle, server_host: String, server_port: u1
     conn.pqc_active = true;
     conn.connected_at = Some(std::time::Instant::now());
     conn.server_ip = final_endpoint.clone();
+    conn.mode = mode.clone();
     conn.psk_established_at = Some(std::time::Instant::now());
 
     Ok(format!("Connected to {} via WireGuard tunnel", final_endpoint))

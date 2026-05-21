@@ -107,6 +107,12 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Peer connected: %s → %s", hello.WGPubkey, allocatedIP)
+	if hello.Mode != "" {
+		log.Printf("  Connection mode: %s", hello.Mode)
+	}
+	if hello.Mode == "peer" {
+		log.Printf("  Peer relay: enabling client-to-client routing for %s", allocatedIP)
+	}
 
 	// Build and send the server response.
 	resp := psk.ServerResponse{

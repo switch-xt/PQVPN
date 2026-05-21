@@ -34,14 +34,14 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1073741824).toFixed(2)} GB`;
 }
 
-function formatSpeed(bps: number): string {
-  if (bps < 1024) return `${bps} B/s`;
-  if (bps < 1048576) return `${(bps / 1024).toFixed(0)} KB/s`;
-  return `${(bps / 1048576).toFixed(1)} MB/s`;
+function formatSpeed(kbps: number): string {
+  if (kbps < 1) return `${Math.round(kbps * 1024)} B/s`;
+  if (kbps < 1024) return `${kbps.toFixed(1)} KB/s`;
+  return `${(kbps / 1024).toFixed(2)} MB/s`;
 }
 
 // ── SVG Sparkline Component ───────────────────────────────────
-function Sparkline({ data, color, height = 40, width = 120 }: {
+function Sparkline({ data, color, height = 50, width = 160 }: {
   data: number[];
   color: string;
   height?: number;
@@ -49,24 +49,35 @@ function Sparkline({ data, color, height = 40, width = 120 }: {
 }) {
   if (data.length < 2) return null;
   const max = Math.max(...data, 1);
+  const padding = 6;
   const step = width / (data.length - 1);
-  const points = data.map((v, i) => `${i * step},${height - (v / max) * (height - 4)}`).join(' ');
+  const getY = (v: number) => padding + (height - padding * 2) - (v / max) * (height - padding * 2);
+  const points = data.map((v, i) => `${i * step},${getY(v)}`).join(' ');
   const areaPoints = `0,${height} ${points} ${width},${height}`;
-  const gradientId = `spark-${color.replace(/[^a-z0-9]/g, '')}`;
+  const uid = `spark-${color.replace(/[^a-z0-9]/g, '')}-${Math.random().toString(36).slice(2, 6)}`;
+  const glowId = `glow-${uid}`;
+  const lastX = (data.length - 1) * step;
+  const lastY = getY(data[data.length - 1]);
 
   return (
-    <svg width={width} height={height} className="sparkline" viewBox={`0 0 ${width} ${height}`}>
+    <svg width="100%" height={height} className="sparkline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
       <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+        <linearGradient id={uid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
           <stop offset="100%" stopColor={color} stopOpacity="0.02" />
         </linearGradient>
+        <filter id={glowId}>
+          <feGaussianBlur stdDeviation="3" result="glow" />
+          <feMerge><feMergeNode in="glow" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
       </defs>
-      <polygon points={areaPoints} fill={`url(#${gradientId})`} />
+      <polygon points={areaPoints} fill={`url(#${uid})`} />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" filter={`url(#${glowId})`} />
       <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {data.length > 0 && (
-        <circle cx={(data.length - 1) * step} cy={height - (data[data.length - 1] / max) * (height - 4)} r="3" fill={color} />
-      )}
+      <circle cx={lastX} cy={lastY} r="4" fill={color} opacity="0.9">
+        <animate attributeName="r" values="4;6;4" dur="1.5s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.9;0.5;0.9" dur="1.5s" repeatCount="indefinite" />
+      </circle>
     </svg>
   );
 }
@@ -299,8 +310,8 @@ function App() {
             }
           }
 
-          const curIn = sIn / 1024; // KB/s
-          const curOut = sOut / 1024; // KB/s
+          const curIn = sIn / 1024; // Convert bytes to KB/s
+          const curOut = sOut / 1024; // Convert bytes to KB/s
 
           setSpeedIn(curIn);
           setSpeedOut(curOut);
@@ -316,16 +327,18 @@ function App() {
           
           setUptimeSeconds(status.uptime_secs);
         } catch {
-          // Simulate traffic when Tauri IPC unavailable
-          const simIn = Math.floor(Math.random() * 120000) + 30000;
-          const simOut = Math.floor(Math.random() * 40000) + 8000;
+          // Simulate traffic when Tauri IPC unavailable (values in KB/s)
+          const simInKB = Math.floor(Math.random() * 120) + 30;
+          const simOutKB = Math.floor(Math.random() * 40) + 8;
+          const simInBytes = simInKB * 1024;
+          const simOutBytes = simOutKB * 1024;
           setUptimeSeconds(prev => prev + 1);
-          setBytesIn(prev => { const n = prev + simIn; lastBytesIn.current = n; return n; });
-          setBytesOut(prev => { const n = prev + simOut; lastBytesOut.current = n; return n; });
-          setSpeedIn(simIn);
-          setSpeedOut(simOut);
-          setSpeedHistory(prev => [...prev.slice(-29), simIn]);
-          setUploadHistory(prev => [...prev.slice(-29), simOut]);
+          setBytesIn(prev => { const n = prev + simInBytes; lastBytesIn.current = n; return n; });
+          setBytesOut(prev => { const n = prev + simOutBytes; lastBytesOut.current = n; return n; });
+          setSpeedIn(simInKB);
+          setSpeedOut(simOutKB);
+          setSpeedHistory(prev => [...prev.slice(-29), simInKB]);
+          setUploadHistory(prev => [...prev.slice(-29), simOutKB]);
         }
       };
       poll();
@@ -353,7 +366,7 @@ function App() {
     setConnectionState('connecting');
     try {
       const server = SERVERS.find(s => s.id === selectedServerId) || SERVERS[0];
-      await invoke('connect', { serverHost: server.ip, serverPort: server.port });
+      await invoke('connect', { serverHost: server.ip, serverPort: server.port, mode });
       setConnectionState('connected');
       setLatency(24);
     } catch {
@@ -362,7 +375,7 @@ function App() {
         setLatency(24);
       }, 2200);
     }
-  }, [connectionState, selectedServerId]);
+  }, [connectionState, selectedServerId, mode]);
 
   const isConnected = connectionState === 'connected';
   // PSK is active for the whole session — show 100% when connected
@@ -704,36 +717,66 @@ function App() {
                 </span>
               </div>
 
-              {/* ── Relay Path Visualization ── */}
+              {/* ── Multi-hop SVG Relay Path Visualization ── */}
               <section className="card peer-card stagger-in">
                 <div className="card__header">
                   <ZapIcon style={{ width: 16, height: 16, color: 'var(--purple)' }} />
-                  <span>Relay Path</span>
+                  <span>Multi-hop encrypted path</span>
                 </div>
-                <div className="relay-path">
-                  <div className="relay-node relay-node--you">
-                    <div className={`relay-node__dot ${isConnected ? 'relay-node__dot--active' : ''}`} />
-                    <span className="relay-node__label">You</span>
-                    <span className="relay-node__sub">{realIp?.city || 'Local'}</span>
-                  </div>
-                  <div className={`relay-line ${isConnected ? 'relay-line--active' : ''}`}>
-                    <div className="relay-line__bar" />
-                    {isConnected && <div className="relay-line__pulse" />}
-                  </div>
-                  <div className="relay-node relay-node--relay">
-                    <div className={`relay-node__dot relay-node__dot--relay ${isConnected ? 'relay-node__dot--active' : ''}`} />
-                    <span className="relay-node__label">Relay</span>
-                    <span className="relay-node__sub">Edge Node</span>
-                  </div>
-                  <div className={`relay-line ${isConnected ? 'relay-line--active' : ''}`}>
-                    <div className="relay-line__bar" />
-                    {isConnected && <div className="relay-line__pulse relay-line__pulse--delayed" />}
-                  </div>
-                  <div className="relay-node relay-node--exit">
-                    <div className={`relay-node__dot relay-node__dot--exit ${isConnected ? 'relay-node__dot--active' : ''}`} />
-                    <span className="relay-node__label">Exit</span>
-                    <span className="relay-node__sub">🇺🇸 Iowa</span>
-                  </div>
+                <div className="relay-svg-container">
+                  <svg viewBox="0 0 360 160" className="relay-svg" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                      <linearGradient id="relayGrad" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="hsl(265, 70%, 62%)" stopOpacity="0.8" />
+                        <stop offset="50%" stopColor="hsl(265, 85%, 72%)" stopOpacity="1" />
+                        <stop offset="100%" stopColor="hsl(265, 70%, 62%)" stopOpacity="0.8" />
+                      </linearGradient>
+                      <filter id="relayGlow">
+                        <feGaussianBlur stdDeviation="4" result="glow" />
+                        <feMerge><feMergeNode in="glow" /><feMergeNode in="SourceGraphic" /></feMerge>
+                      </filter>
+                    </defs>
+
+                    {/* Path curve from You → Relay → Exit */}
+                    <path
+                      d="M 50 110 Q 130 20, 180 50 Q 230 80, 310 110"
+                      fill="none"
+                      stroke={isConnected ? 'url(#relayGrad)' : 'hsla(220, 20%, 30%, 0.4)'}
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      filter={isConnected ? 'url(#relayGlow)' : 'none'}
+                      style={{ transition: 'stroke 0.5s ease' }}
+                    />
+
+                    {/* Animated pulse along the path */}
+                    {isConnected && (
+                      <circle r="5" fill="hsl(265, 85%, 72%)" opacity="0.9">
+                        <animateMotion dur="2.5s" repeatCount="indefinite" path="M 50 110 Q 130 20, 180 50 Q 230 80, 310 110" />
+                      </circle>
+                    )}
+
+                    {/* Node: You */}
+                    <circle cx="50" cy="110" r={isConnected ? 10 : 8} fill={isConnected ? 'hsl(265, 70%, 62%)' : 'hsla(220, 20%, 25%, 0.8)'} stroke={isConnected ? 'hsl(265, 85%, 80%)' : 'hsla(220, 20%, 40%, 0.5)'} strokeWidth="2" style={{ transition: 'all 0.4s ease' }} />
+                    {isConnected && <circle cx="50" cy="110" r="16" fill="none" stroke="hsl(265, 70%, 62%)" strokeWidth="1" opacity="0.3"><animate attributeName="r" values="12;20;12" dur="2s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.4;0.1;0.4" dur="2s" repeatCount="indefinite" /></circle>}
+
+                    {/* Node: Relay */}
+                    <circle cx="180" cy="50" r={isConnected ? 12 : 8} fill={isConnected ? 'hsl(265, 75%, 68%)' : 'hsla(220, 20%, 25%, 0.8)'} stroke={isConnected ? 'hsl(265, 90%, 85%)' : 'hsla(220, 20%, 40%, 0.5)'} strokeWidth="2" style={{ transition: 'all 0.4s ease' }} />
+                    {isConnected && <circle cx="180" cy="50" r="18" fill="none" stroke="hsl(265, 75%, 68%)" strokeWidth="1" opacity="0.3"><animate attributeName="r" values="14;22;14" dur="2.2s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.4;0.1;0.4" dur="2.2s" repeatCount="indefinite" /></circle>}
+
+                    {/* Node: Exit */}
+                    <circle cx="310" cy="110" r={isConnected ? 10 : 8} fill={isConnected ? 'hsl(265, 70%, 62%)' : 'hsla(220, 20%, 25%, 0.8)'} stroke={isConnected ? 'hsl(265, 85%, 80%)' : 'hsla(220, 20%, 40%, 0.5)'} strokeWidth="2" style={{ transition: 'all 0.4s ease' }} />
+                    {isConnected && <circle cx="310" cy="110" r="16" fill="none" stroke="hsl(265, 70%, 62%)" strokeWidth="1" opacity="0.3"><animate attributeName="r" values="12;20;12" dur="2.4s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.4;0.1;0.4" dur="2.4s" repeatCount="indefinite" /></circle>}
+
+                    {/* Labels */}
+                    <text x="50" y="138" textAnchor="middle" className="relay-svg__label" fill="var(--text-1)">You</text>
+                    <text x="50" y="152" textAnchor="middle" className="relay-svg__sub" fill="var(--text-3)">{realIp?.city || 'Local'}</text>
+
+                    <text x="180" y="30" textAnchor="middle" className="relay-svg__label" fill="var(--text-1)">Relay</text>
+                    <text x="180" y="44" textAnchor="middle" className="relay-svg__sub" fill="var(--text-3)">Edge</text>
+
+                    <text x="310" y="138" textAnchor="middle" className="relay-svg__label" fill="var(--text-1)">Exit</text>
+                    <text x="310" y="152" textAnchor="middle" className="relay-svg__sub" fill="var(--text-3)">🇺🇸 Iowa</text>
+                  </svg>
                 </div>
               </section>
 

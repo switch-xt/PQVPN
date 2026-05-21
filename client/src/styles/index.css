@@ -1315,3 +1315,210 @@ body {
   user-select: none;
   -webkit-user-select: none;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PEER RELAY MODE — SVG Multi-hop Visualization
+   ══════════════════════════════════════════════════════════════ */
+
+.peer-card {
+  overflow: visible;
+}
+
+.relay-svg-container {
+  width: 100%;
+  padding: 8px 0 4px;
+  display: flex;
+  justify-content: center;
+}
+
+.relay-svg {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  overflow: visible;
+}
+
+.relay-svg__label {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.relay-svg__sub {
+  font-family: var(--font);
+  font-size: 9px;
+  font-weight: 400;
+}
+
+/* ── Peer Stats Grid ──────────────────────────────────────── */
+.peer-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.peer-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+  background: hsla(220, 30%, 14%, 0.5);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  transition: border-color 0.3s var(--ease);
+}
+
+.peer-stat:hover {
+  border-color: var(--glass-border-h);
+}
+
+.peer-stat__icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.peer-stat__value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.peer-stat__label {
+  font-size: 0.6rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Peer Info Grid ───────────────────────────────────────── */
+.peer-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.text-cyan { color: var(--cyan); }
+.text-green { color: var(--green); }
+.text-dim { color: var(--text-3); }
+.text-mono { font-family: 'SF Mono', 'Consolas', monospace; font-size: 0.8rem; }
+
+/* ══════════════════════════════════════════════════════════════
+   GAMING MODE — Performance Dashboard
+   ══════════════════════════════════════════════════════════════ */
+
+.gaming-hero-card {
+  overflow: visible;
+}
+
+.gaming-ping-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 8px;
+}
+
+.gaming-ping-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gaming-ping-ring--active svg circle:nth-child(2) {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.gaming-ping-value {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gaming-ping-number {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s ease;
+}
+
+.gaming-ping-unit {
+  font-size: 0.65rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+
+.gaming-status-label {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+/* ── Gaming Metrics ───────────────────────────────────────── */
+.gaming-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gaming-metric {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.gaming-metric__label {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.gaming-metric__value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.gaming-metric__bar {
+  flex: 1;
+  height: 6px;
+  background: hsla(220, 20%, 20%, 0.5);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.gaming-metric__bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s var(--ease);
+}
+
+.gaming-metric__bar-fill--good {
+  background: linear-gradient(90deg, var(--cyan), var(--green));
+}
+
+.gaming-metric__bar-fill--perfect {
+  background: linear-gradient(90deg, var(--green), hsl(155, 85%, 55%));
+}
+
+/* ── Improved Sparkline ───────────────────────────────────── */
+.sparkline {
+  display: block;
+  border-radius: 6px;
+}
+
+.graph-box .sparkline {
+  margin-top: 4px;
+}

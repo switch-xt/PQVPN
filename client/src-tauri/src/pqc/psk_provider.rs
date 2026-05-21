@@ -36,6 +36,7 @@ struct ClientHello {
     ek_b64: String,
     wg_pubkey: String,
     auth_token: String,
+    mode: String,
 }
 
 /// JSON payload received from the server.
@@ -81,6 +82,7 @@ pub fn negotiate(
     pinned_cert_der: &[u8],
     wg_pubkey: &str,
     auth_token: &str,
+    mode: &str,
 ) -> Result<Negotiated> {
     // --- Step 1: Generate ephemeral ML-KEM-768 keypair ---
     let (dk, ek) = MlKem768::generate(&mut OsRng);
@@ -107,6 +109,7 @@ pub fn negotiate(
         ek_b64,
         wg_pubkey: wg_pubkey.to_string(),
         auth_token: auth_token.to_string(),
+        mode: mode.to_string(),
     };
     let mut hello_json = serde_json::to_string(&hello).context("serialise ClientHello")?;
     hello_json.push('\n');

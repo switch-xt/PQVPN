@@ -28,6 +28,8 @@ pub struct WgConfParams {
     pub endpoint: String,
     /// Allowed IPs (e.g. "0.0.0.0/0, ::/0" for full tunnel).
     pub allowed_ips: String,
+    /// Whether to apply gaming-mode optimizations (lower MTU, faster keepalive).
+    pub gaming_mode: bool,
 }
 
 /// Render a WireGuard configuration string from the given parameters.
@@ -37,25 +39,30 @@ pub fn render_conf(params: &WgConfParams) -> String {
         None => "".to_string(),
     };
 
+    let mtu_line = if params.gaming_mode { "MTU = 1280\n" } else { "" };
+    let keepalive = if params.gaming_mode { 15 } else { 25 };
+
     format!(
         r#"[Interface]
 PrivateKey = {private_key}
 Address = {address}
 DNS = {dns}
-
+{mtu_line}
 [Peer]
 PublicKey = {server_pubkey}
 {psk_line}Endpoint = {endpoint}
 AllowedIPs = {allowed_ips}
-PersistentKeepalive = 25
+PersistentKeepalive = {keepalive}
 "#,
         private_key = params.private_key,
         address = params.address,
         dns = params.dns,
+        mtu_line = mtu_line,
         server_pubkey = params.server_pubkey,
         psk_line = psk_line,
         endpoint = params.endpoint,
         allowed_ips = params.allowed_ips,
+        keepalive = keepalive,
     )
 }
 
@@ -243,6 +250,7 @@ mod tests {
             preshared_key: "aabbccdd".into(),
             endpoint: "1.2.3.4:51820".into(),
             allowed_ips: "0.0.0.0/0".into(),
+            gaming_mode: false,
         };
         let conf = render_conf(&params);
         assert!(conf.contains("PrivateKey = YWJjZGVmZw=="));

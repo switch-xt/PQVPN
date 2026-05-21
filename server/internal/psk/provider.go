@@ -41,6 +41,9 @@ type ClientHello struct {
 
 	// AuthToken is an optional authentication token.
 	AuthToken string `json:"auth_token,omitempty"`
+
+	// Mode is the client connection mode: "server", "peer", or "gaming".
+	Mode string `json:"mode,omitempty"`
 }
 
 // ServerResponse is the server's reply to a ClientHello.
