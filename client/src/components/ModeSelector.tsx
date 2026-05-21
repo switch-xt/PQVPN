@@ -1,6 +1,6 @@
 import React from 'react';
 
-type Mode = 'server' | 'peer' | 'gaming';
+type Mode = 'server' | 'peer' | 'gaming' | 'share';
 
 interface ModeSelectorProps {
   activeMode: Mode;
@@ -10,6 +10,7 @@ interface ModeSelectorProps {
 const modes: { id: Mode; label: string; disabled: boolean }[] = [
   { id: 'server', label: 'Server', disabled: false },
   { id: 'peer', label: 'Peer Relay', disabled: false },
+  { id: 'share', label: 'Share', disabled: false },
   { id: 'gaming', label: 'Gaming', disabled: false },
 ];
 

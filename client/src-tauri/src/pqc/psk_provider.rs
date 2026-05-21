@@ -37,6 +37,10 @@ struct ClientHello {
     wg_pubkey: String,
     auth_token: String,
     mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    share_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target_code: Option<String>,
 }
 
 /// JSON payload received from the server.
@@ -83,6 +87,8 @@ pub fn negotiate(
     wg_pubkey: &str,
     auth_token: &str,
     mode: &str,
+    share_code: Option<String>,
+    target_code: Option<String>,
 ) -> Result<Negotiated> {
     // --- Step 1: Generate ephemeral ML-KEM-768 keypair ---
     let (dk, ek) = MlKem768::generate(&mut OsRng);
@@ -110,6 +116,8 @@ pub fn negotiate(
         wg_pubkey: wg_pubkey.to_string(),
         auth_token: auth_token.to_string(),
         mode: mode.to_string(),
+        share_code,
+        target_code,
     };
     let mut hello_json = serde_json::to_string(&hello).context("serialise ClientHello")?;
     hello_json.push('\n');

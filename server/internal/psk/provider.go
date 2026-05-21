@@ -44,6 +44,12 @@ type ClientHello struct {
 
 	// Mode is the client connection mode: "server", "peer", or "gaming".
 	Mode string `json:"mode,omitempty"`
+
+	// ShareCode is used to share internet connection with another peer.
+	ShareCode string `json:"share_code,omitempty"`
+
+	// TargetCode is used to connect to a peer sharing their internet connection.
+	TargetCode string `json:"target_code,omitempty"`
 }
 
 // ServerResponse is the server's reply to a ClientHello.

@@ -4,11 +4,15 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os/exec"
+	"sync"
 
 	"github.com/pqvpn/server/internal/peers"
 	"github.com/pqvpn/server/internal/psk"
 	"github.com/pqvpn/server/internal/wg"
 )
+
+var shareMap sync.Map
 
 // Handler implements the HTTP route handlers for the pqvpnd API.
 type Handler struct {
@@ -112,6 +116,30 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 	if hello.Mode == "peer" {
 		log.Printf("  Peer relay: enabling client-to-client routing for %s", allocatedIP)
+	}
+
+	if hello.ShareCode != "" {
+		shareMap.Store(hello.ShareCode, allocatedIP)
+		log.Printf("Peer is sharing internet with code %s", hello.ShareCode)
+	}
+
+	if hello.TargetCode != "" {
+		if val, ok := shareMap.Load(hello.TargetCode); ok {
+			sharerIP := val.(string)
+			log.Printf("Routing peer %s traffic through sharer %s (code: %s)", allocatedIP, sharerIP, hello.TargetCode)
+
+			cmd1 := exec.Command("ip", "rule", "add", "from", allocatedIP, "table", "100")
+			if err := cmd1.Run(); err != nil {
+				log.Printf("Note: failed to add ip rule (might already exist): %v", err)
+			}
+
+			cmd2 := exec.Command("ip", "route", "add", "default", "via", sharerIP, "dev", "wg0", "table", "100")
+			if err := cmd2.Run(); err != nil {
+				log.Printf("Note: failed to add ip route (might already exist): %v", err)
+			}
+		} else {
+			log.Printf("Warning: TargetCode %s not found in shareMap", hello.TargetCode)
+		}
 	}
 
 	// Build and send the server response.

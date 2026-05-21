@@ -30,6 +30,8 @@ pub struct WgConfParams {
     pub allowed_ips: String,
     /// Whether to apply gaming-mode optimizations (lower MTU, faster keepalive).
     pub gaming_mode: bool,
+    /// Whether this client is sharing its internet connection.
+    pub is_sharer: bool,
 }
 
 /// Render a WireGuard configuration string from the given parameters.
@@ -100,7 +102,7 @@ fn wg_exe() -> Result<String> {
 /// 2. Installs the new tunnel service
 /// All errors are suppressed (`2>$null`) so no native Windows error dialogs
 /// appear, which would freeze the WebView2 event loop.
-pub fn tunnel_up(conf_path: &Path) -> Result<()> {
+pub fn tunnel_up(conf_path: &Path, is_sharer: bool) -> Result<()> {
     let exe = wg_exe()?;
     let conf_str = conf_path.to_string_lossy().to_string();
     let tunnel_name = conf_path
@@ -120,10 +122,22 @@ if ($svc) {{
     Start-Sleep -Seconds 2
 }}
 & '{exe}' /installtunnelservice '{conf}' 2>$null
+{nat_cmds}
 "#,
         name = tunnel_name,
         exe = exe,
         conf = conf_str,
+        nat_cmds = if is_sharer {
+            format!(
+                r#"Start-Sleep -Seconds 2
+Set-NetIPInterface -InterfaceAlias '{name}' -Forwarding Enabled 2>$null
+Remove-NetNat -Name 'PQVPN_Share' -Confirm:$false 2>$null
+New-NetNat -Name 'PQVPN_Share' -InternalIPInterfaceAddressPrefix '10.8.0.0/24' 2>$null"#,
+                name = tunnel_name
+            )
+        } else {
+            String::new()
+        },
     );
 
     std::fs::write(&script_path, &script_content)
@@ -251,6 +265,7 @@ mod tests {
             endpoint: "1.2.3.4:51820".into(),
             allowed_ips: "0.0.0.0/0".into(),
             gaming_mode: false,
+            is_sharer: false,
         };
         let conf = render_conf(&params);
         assert!(conf.contains("PrivateKey = YWJjZGVmZw=="));

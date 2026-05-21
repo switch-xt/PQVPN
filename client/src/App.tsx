@@ -119,6 +119,8 @@ function App() {
   const [selectedServerId, setSelectedServerId] = useState('us');
   const [serverDropdownOpen, setServerDropdownOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('server');
+  const [shareCode, setShareCode] = useState<string>('');
+  const [targetCode, setTargetCode] = useState<string>('');
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [bytesIn, setBytesIn] = useState(0);
   const [bytesOut, setBytesOut] = useState(0);
@@ -366,7 +368,13 @@ function App() {
     setConnectionState('connecting');
     try {
       const server = SERVERS.find(s => s.id === selectedServerId) || SERVERS[0];
-      await invoke('connect', { serverHost: server.ip, serverPort: server.port, mode });
+      await invoke('connect', { 
+        serverHost: server.ip, 
+        serverPort: server.port, 
+        mode,
+        shareCode: mode === 'share' ? shareCode : null,
+        targetCode: mode === 'peer' && targetCode.trim() ? targetCode.trim() : null
+      });
       setConnectionState('connected');
       setLatency(24);
     } catch {
@@ -375,7 +383,15 @@ function App() {
         setLatency(24);
       }, 2200);
     }
-  }, [connectionState, selectedServerId, mode]);
+  }, [connectionState, selectedServerId, mode, shareCode, targetCode]);
+
+  // Generate share code when switching to share mode
+  useEffect(() => {
+    if (mode === 'share' && !shareCode) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      setShareCode(code);
+    }
+  }, [mode, shareCode]);
 
   const isConnected = connectionState === 'connected';
   // PSK is active for the whole session — show 100% when connected
@@ -780,8 +796,31 @@ function App() {
                 </div>
               </section>
 
-              {/* ── Connect Button ── */}
+              {/* ── Connect Button & Target Code Input ── */}
               <div className="connect-wrapper">
+                {!isConnected && connectionState !== 'connecting' && (
+                  <div className="target-code-input-wrapper" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Enter 6-digit Share Code" 
+                      value={targetCode}
+                      onChange={(e) => setTargetCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                      style={{
+                        background: 'var(--glass-2)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '12px 16px',
+                        color: 'var(--text-1)',
+                        fontSize: '1.2rem',
+                        letterSpacing: '0.2em',
+                        textAlign: 'center',
+                        width: '240px',
+                        outline: 'none',
+                        fontFamily: 'monospace'
+                      }}
+                    />
+                  </div>
+                )}
                 <ConnectButton state={connectionState} onClick={handleConnect} />
                 <div className={`connect-label ${isConnected ? 'connect-label--on' : ''}`}>
                   {isConnected ? 'Relay Tunnel Active' : connectionState === 'connecting' ? 'Building Relay Chain...' : 'Tap to Relay'}
@@ -863,6 +902,85 @@ function App() {
                   </div>
                 </div>
               </section>
+            </>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              SHARE INTERNET MODE
+              ══════════════════════════════════════════════════ */}
+          {mode === 'share' && (
+            <>
+              <div className={`status-banner ${isConnected ? 'status-banner--on' : connectionState === 'connecting' ? 'status-banner--loading' : ''}`}>
+                <div className="status-banner__dot" />
+                <span className="status-banner__text">
+                  {isConnected
+                    ? 'Sharing Internet — You are now an Exit Node'
+                    : connectionState === 'connecting'
+                      ? 'Configuring NAT router...'
+                      : 'Share your connection with a friend'}
+                </span>
+              </div>
+
+              <section className="card stagger-in">
+                <div className="card__header">
+                  <GlobeIcon style={{ width: 16, height: 16, color: 'var(--blue)' }} />
+                  <span>Your Share Code</span>
+                </div>
+                <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    fontSize: '3rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.2em',
+                    color: isConnected ? 'var(--blue)' : 'var(--text-1)',
+                    fontFamily: 'monospace',
+                    textShadow: isConnected ? '0 0 20px hsla(215, 85%, 55%, 0.4)' : 'none',
+                    transition: 'all 0.3s ease'
+                  }}>
+                    {shareCode || '------'}
+                  </div>
+                  <div style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>
+                    {isConnected ? 'Give this code to your friend to connect.' : 'Connect to activate your share code.'}
+                  </div>
+                </div>
+              </section>
+
+              <div className="connect-wrapper">
+                <ConnectButton state={connectionState} onClick={handleConnect} />
+                <div className={`connect-label ${isConnected ? 'connect-label--on' : ''}`}>
+                  {isConnected ? 'Sharing Active' : connectionState === 'connecting' ? 'Starting Router...' : 'Tap to Share'}
+                </div>
+              </div>
+
+              {isConnected && (
+                <section className="card stagger-in">
+                  <div className="card__header">
+                    <ActivityIcon style={{ width: 16, height: 16, color: 'var(--blue)' }} />
+                    <span>Relay Traffic</span>
+                  </div>
+                  <div className="peer-stats-grid">
+                    <div className="peer-stat">
+                      <span className="peer-stat__icon">👥</span>
+                      <span className="peer-stat__value">1</span>
+                      <span className="peer-stat__label">Peers</span>
+                    </div>
+                    <div className="peer-stat">
+                      <span className="peer-stat__icon">🕒</span>
+                      <span className="peer-stat__value">{formatUptime(uptimeSeconds)}</span>
+                      <span className="peer-stat__label">Uptime</span>
+                    </div>
+                    <div className="peer-stat">
+                      <span className="peer-stat__icon">📥</span>
+                      <span className="peer-stat__value">{formatBytes(bytesIn)}</span>
+                      <span className="peer-stat__label">Down</span>
+                    </div>
+                    <div className="peer-stat">
+                      <span className="peer-stat__icon">📤</span>
+                      <span className="peer-stat__value">{formatBytes(bytesOut)}</span>
+                      <span className="peer-stat__label">Up</span>
+                    </div>
+                  </div>
+                </section>
+              )}
             </>
           )}
 

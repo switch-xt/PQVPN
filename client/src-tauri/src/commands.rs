@@ -63,7 +63,15 @@ pub struct VpnStatus {
 
 /// Connect to the VPN: try PQ negotiation first, fall back to direct WireGuard tunnel.
 #[tauri::command]
-pub async fn connect(app: tauri::AppHandle, server_host: String, server_port: u16, mode: String, state: tauri::State<'_, AppState>) -> Result<String, String> {
+pub async fn connect(
+    app: tauri::AppHandle,
+    server_host: String,
+    server_port: u16,
+    mode: String,
+    share_code: Option<String>,
+    target_code: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<String, String> {
     let mut config = state
         .config
         .lock()
@@ -84,6 +92,8 @@ pub async fn connect(app: tauri::AppHandle, server_host: String, server_port: u1
         &config.wg_pubkey(),
         "auth-token-placeholder",
         &mode,
+        share_code,
+        target_code,
     ) {
         Ok(negotiated) => {
             let psk = crate::wireguard::psk_to_base64(&negotiated.psk);
@@ -109,13 +119,14 @@ pub async fn connect(app: tauri::AppHandle, server_host: String, server_port: u1
             endpoint: final_endpoint.clone(), // Connect directly to server
             allowed_ips: "0.0.0.0/0, ::/0".into(),
             gaming_mode: mode == "gaming",
+            is_sharer: mode == "share",
         };
 
         let conf_path = wireguard::write_conf(TUNNEL_NAME, &params)
             .map_err(|e| format!("write config failed: {e}"))?;
 
         // Bring tunnel up
-        wireguard::tunnel_up(&conf_path)
+        wireguard::tunnel_up(&conf_path, mode == "share")
             .map_err(|e| format!("tunnel_up failed: {e}"))?;
 
         // Start auto-reconnect monitor
