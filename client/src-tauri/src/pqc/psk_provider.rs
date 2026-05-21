@@ -28,6 +28,7 @@ pub struct Negotiated {
     pub server_wg_pubkey: String,
     /// Server endpoint in "host:port" format for WireGuard.
     pub server_endpoint: String,
+    pub allowed_ip: String,
 }
 
 /// JSON payload sent to the server.
@@ -50,6 +51,7 @@ struct ServerResponse {
     server_wg_pubkey: String,
     server_endpoint: String,
     hkdf_salt_b64: String,
+    allowed_ip: String,
 }
 
 /// Build a `rustls::ClientConfig` that pins a single server certificate.
@@ -173,6 +175,7 @@ pub fn negotiate(
         psk,
         server_wg_pubkey: resp.server_wg_pubkey,
         server_endpoint: resp.server_endpoint,
+        allowed_ip: resp.allowed_ip,
     })
 }
 

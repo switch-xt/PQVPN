@@ -97,6 +97,7 @@ pub async fn connect(
     ) {
         Ok(negotiated) => {
             let psk = crate::wireguard::psk_to_base64(&negotiated.psk);
+            config.client_address = format!("{}/32", negotiated.allowed_ip);
             (Some(psk), negotiated.server_wg_pubkey, negotiated.server_endpoint)
         }
         Err(_e) => {

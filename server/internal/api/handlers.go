@@ -13,7 +13,9 @@ import (
 	"github.com/pqvpn/server/internal/wg"
 )
 
-var shareMap sync.Map
+var shareMap sync.Map       // shareCode -> sharerIP
+var relayMap sync.Map       // peerIP -> sharerIP (for cleanup on disconnect)
+var peerIPMap sync.Map      // wgPubkey -> allocatedIP (for disconnect cleanup)
 
 // Handler implements the HTTP route handlers for the pqvpnd API.
 type Handler struct {
@@ -115,6 +117,7 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	peerIPMap.Store(hello.WGPubkey, allocatedIP)
 	log.Printf("Peer connected: %s → %s", hello.WGPubkey, allocatedIP)
 	if hello.Mode != "" {
 		log.Printf("  Connection mode: %s", hello.Mode)
@@ -142,6 +145,7 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 			if err := cmd2.Run(); err != nil {
 				log.Printf("Note: failed to add ip route (might already exist): %v", err)
 			}
+			relayMap.Store(allocatedIP, sharerIP)
 		} else {
 			log.Printf("Warning: TargetCode %s not found in shareMap", hello.TargetCode)
 		}
@@ -195,6 +199,34 @@ func (h *Handler) HandleDisconnect(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to remove peer %s from store: %v", req.WGPubkey, err)
 		writeError(w, http.StatusInternalServerError, "failed to remove peer from store")
 		return
+	}
+
+	// Retrieve the peer's allocated IP
+	if val, ok := peerIPMap.Load(req.WGPubkey); ok {
+		peerIP := val.(string)
+		peerIPMap.Delete(req.WGPubkey)
+
+		// If this peer was in a relay session, clean up routing rules
+		if sharerVal, ok := relayMap.Load(peerIP); ok {
+			sharerIP := sharerVal.(string)
+			relayMap.Delete(peerIP)
+
+			// Remove policy routing rule for this peer
+			exec.Command("ip", "rule", "del", "from", peerIP, "table", "100").Run()
+			// Remove the relay route
+			exec.Command("ip", "route", "del", "default", "via", sharerIP, "dev", "wg0", "table", "100").Run()
+			log.Printf("Cleaned up relay routing for peer %s via sharer %s", peerIP, sharerIP)
+		}
+
+		// If this peer was a sharer, remove their share code from shareMap
+		shareMap.Range(func(key, value interface{}) bool {
+			if value.(string) == peerIP {
+				shareMap.Delete(key)
+				log.Printf("Removed share code %s (sharer %s disconnected)", key, peerIP)
+				return false
+			}
+			return true
+		})
 	}
 
 	log.Printf("Peer disconnected: %s", req.WGPubkey)
